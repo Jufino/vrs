@@ -46,47 +46,28 @@ SOFTWARE.
 **
 **===========================================================================
 */
-void initGPIOA(char pin){
+void initGPIOA(int pin){
 	  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
-
 	  //setting GPIO output, pushpull, pullup, very high speed
 	  GPIOA->MODER |= (uint32_t)(0b01<<(2*pin));
+	  GPIOA->OTYPER &= (uint32_t)(~(1<<pin));
 	  GPIOA->PUPDR |= (uint32_t)(0b01<<(2*pin));
-
-	  GPIOA->OTYPER &= (uint32_t)(~(1<<pin));
 	  GPIOA->OSPEEDR |= (uint32_t)(0b11<<(2*pin));
 }
-
-void initGPIOC(char pin){
-	  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOC, ENABLE);
-
-	  GPIOA->MODER |= (uint32_t)(0b00<<(2*pin));
-	  GPIOA->PUPDR |= (uint32_t)(0b00<<(2*pin));
-
-	  GPIOA->OTYPER &= (uint32_t)(~(1<<pin));
-	  GPIOA->OSPEEDR |= (uint32_t)(0b11<<(2*pin));
-}
-
 void setLedBSRR(char status){
 	if(status==1)
 		GPIOA->BSRRL |= (uint16_t)(1<<5);
 	else
 		GPIOA->BSRRH |= (uint16_t)(1<<5);
 }
-
 void setLedODR(char status){
 	if(status==1)
 		GPIOA->ODR |= (uint32_t)(1<<5);
 	else
 		GPIOA->ODR &= (uint32_t)(~(1<<5));
 }
-
 void setLedToggle(){
 	GPIOA->ODR ^= (uint32_t)(1<<5);
-}
-
-char getButton(){
-	return (GPIOC->IDR&(1<13))&&(1<13);
 }
 
 void delay(long time){
@@ -96,10 +77,24 @@ void delay(long time){
 int main(void)
 {
   initGPIOA(5);
-  initGPIOC(13);
+
   while (1)
   {
-	  setLedODR(getButton());
+	  setLedODR(1);
+	  delay(100000);
+	  setLedODR(0);
+	  delay(100000);
+
+	  setLedBSRR(1);
+	  delay(100000);
+	  setLedBSRR(0);
+	  delay(100000);
+
+	  setLedToggle();
+	  delay(100000);
+	  setLedToggle();
+	  delay(100000);
+
   }
   return 0;
 }

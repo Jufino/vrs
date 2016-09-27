@@ -86,7 +86,7 @@ void setLedToggle(){
 }
 
 char getButton(){
-	return (GPIOC->IDR&(1<13))&&(1<13);
+	return GPIOC->IDR&&(1<13);
 }
 
 void delay(long time){
@@ -96,7 +96,7 @@ void delay(long time){
 int main(void)
 {
   initGPIOA(5);
-  initGPIOC(13);
+  initGPIOA(13);
   while (1)
   {
 	  setLedODR(getButton());
