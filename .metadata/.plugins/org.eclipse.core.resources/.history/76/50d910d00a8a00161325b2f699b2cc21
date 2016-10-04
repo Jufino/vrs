@@ -99,7 +99,7 @@ int main(void)
   initGPIOC(13);
   while (1)
   {
-	  setLedODR(getButton()); //
+	  setLedODR(getButton());
   }
   return 0;
 }
