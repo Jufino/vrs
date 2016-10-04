@@ -130,11 +130,14 @@ int main(void) {
 	//initGPIOA(5);
 	//initGPIOC(13);
 	while (1) {
+		setLedToggle();
+		delay(40000);
+		/*
 		if(getButtonByLibrary()){
 			GPIO_ToggleBits(GPIOA,GPIO_Pin_5);
 			while(getButtonByLibrary());
 		}
-		delay(40000);
+		*/
 		//setLedODR(getButton());
 		/*if(getButton()){
 		 setLedToggle();
