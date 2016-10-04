@@ -91,6 +91,13 @@ char getButton() {
 	}
 }
 
+char getButtonByLibrary(){
+	if(GPIO_ReadInputDataBit(GPIOC,GPIO_Pin_13)){
+		delay(10000);
+		return GPIO_ReadInputDataBit(GPIOC,GPIO_Pin_13);
+	}
+}
+
 void delay(long time) {
 	for (long i = 0; i < time; i++)
 		;
@@ -119,10 +126,14 @@ int main(void) {
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13;
 	GPIO_Init(GPIOC, &GPIO_InitStructure);
 
+	GPIO_ReadInputDataBit(GPIOC,GPIO_Pin_13);
 	//initGPIOA(5);
 	//initGPIOC(13);
 	while (1) {
-		GPIO_ToggleBits(GPIOA,GPIO_Pin_5);
+		if(getButtonByLibrary()){
+			GPIO_ToggleBits(GPIOA,GPIO_Pin_5);
+			while(getButtonByLibrary());
+		}
 		delay(40000);
 		//setLedODR(getButton());
 		/*if(getButton()){
