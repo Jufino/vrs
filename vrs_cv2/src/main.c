@@ -85,22 +85,29 @@ void setLedToggle() {
 }
 
 char getButton() {
-	if ((GPIOC->IDR & (1 << 13)) && (1 << 13)) {
-		delay(10000);
-		return (GPIOC->IDR & (1 << 13)) && (1 << 13);
+	int pocet = 0;
+	for(int i = 0;i<10;i++){
+		if((GPIOC->IDR & (1 << 13)) && (1 << 13)){
+			pocet++;
+		}
 	}
+	if(pocet > 5) return 1;
+	else		  return 0;
 }
 
 char getButtonByLibrary(){
-	if(GPIO_ReadInputDataBit(GPIOC,GPIO_Pin_13)){
-		delay(10000);
-		return GPIO_ReadInputDataBit(GPIOC,GPIO_Pin_13);
+	int pocet = 0;
+	for(int i = 0;i<10;i++){
+		if(GPIO_ReadInputDataBit(GPIOC,GPIO_Pin_13)){
+			pocet++;
+		}
 	}
+	if(pocet > 5) return 1;
+	else		  return 0;
 }
 
 void delay(long time) {
-	for (long i = 0; i < time; i++)
-		;
+	for (long i = 0; i < time; i++);
 }
 
 int main(void) {
