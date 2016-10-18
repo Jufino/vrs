@@ -101,7 +101,7 @@ void initUART(void) {
 	//configuring interrupts
 	/* NVIC configuration */
 	/* Configure the Priority Group to 2 bits */
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
 
 	/* Enable the USARTx Interrupt */
 	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;

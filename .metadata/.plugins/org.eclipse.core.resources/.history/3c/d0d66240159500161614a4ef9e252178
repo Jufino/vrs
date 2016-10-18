@@ -53,7 +53,7 @@ void adc_init(void) {
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
 	NVIC_InitTypeDef NVIC_InitStructure;
 	NVIC_InitStructure.NVIC_IRQChannel = ADC1_IRQn; //zoznam prerušení nájdete v súbore stm32l1xx.h
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
@@ -61,7 +61,8 @@ void adc_init(void) {
 
 void sendCharUART(char znak) {
 	USART_SendData(USART2, (uint8_t) znak);
-	while (USART_GetFlagStatus(USART2, USART_FLAG_TC) == RESET);
+	while (USART_GetFlagStatus(USART2, USART_FLAG_TC) == RESET)
+		;
 }
 
 void sendStringUART(char znak[],int length) {
@@ -101,11 +102,11 @@ void initUART(void) {
 	//configuring interrupts
 	/* NVIC configuration */
 	/* Configure the Priority Group to 2 bits */
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 
 	/* Enable the USARTx Interrupt */
 	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
