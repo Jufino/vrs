@@ -25,7 +25,6 @@ void delay(long time);
 
 void initUART(void);
 void sendCharUART(char znak);
-void sendStringUART(char znak[],int length);
 
 
 

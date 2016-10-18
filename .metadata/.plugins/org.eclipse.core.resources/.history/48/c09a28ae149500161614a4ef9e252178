@@ -36,9 +36,9 @@ int main(void) {
 		setLedToggle();
 		delay(hodnotaADC * 100);
 		if (toggleBitUart == 1)
-			sendStringUART("3.30V\n\r", 7);
+			sendStringUART("3.30V\n", 6);
 		else
-			sendStringUART("4095\n\r", 6);
+			sendStringUART("4095\n", 5);
 	}
 	return 0;
 }

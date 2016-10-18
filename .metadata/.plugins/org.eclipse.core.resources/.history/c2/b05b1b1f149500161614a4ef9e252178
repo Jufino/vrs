@@ -65,12 +65,6 @@ void sendCharUART(char znak) {
 		;
 }
 
-void sendStringUART(char znak[],int length) {
-	for(int i=0;i<length;i++){
-		sendCharUART(znak[i]);
-	}
-}
-
 void initUART(void) {
 	USART_InitTypeDef USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
