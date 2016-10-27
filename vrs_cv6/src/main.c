@@ -29,11 +29,9 @@ void USART2_IRQHandler(void) {
 	}
 }
 
-void USART2TX_IRQHandler(void) {
-
-}
-int i=0;
 int main(void) {
+	char bufferPrevod[7];
+
 	adc_init();
 	initLed();
 	initUART();
@@ -43,13 +41,35 @@ int main(void) {
 	while (1) {
 		//setLedToggle();
 		//delay(hodnotaADC * 100);
-		if(i++ > 2){
-			i=0;
-			if (toggleBitUart == 1)
-				sendStringByBufferUART("3.30V\n\r", 7);
-			else
-				sendStringByBufferUART("4095\n\r", 6);
-		}
+			if (toggleBitUart == 1){
+				float prevedenaHodnota = (3.3/4096)*(float)hodnotaADC;
+				bufferPrevod[0] = (char)prevedenaHodnota;
+				bufferPrevod[1] = '.';
+				bufferPrevod[2] = (char)((prevedenaHodnota-(float)bufferPrevod[0])/0.1)+'0';
+				bufferPrevod[0] += '0';
+				bufferPrevod[3] = 'V';
+				bufferPrevod[4] = ' ';
+				bufferPrevod[5] = '\r';
+				bufferPrevod[6] = '\n';
+			}
+			else{
+				int hodnotaUpravena = 0;
+				bufferPrevod[0] = (char)(hodnotaADC/1000);
+				hodnotaUpravena = (hodnotaADC-(int)bufferPrevod[0]*1000);
+				bufferPrevod[1] = (char)(hodnotaUpravena/100);
+				hodnotaUpravena = (hodnotaUpravena-(int)bufferPrevod[1]*100);
+				bufferPrevod[2] = (char)(hodnotaUpravena/10);
+				hodnotaUpravena = (hodnotaUpravena-(int)bufferPrevod[2]*10);
+				bufferPrevod[3] = (char)(hodnotaUpravena)+'0';
+				bufferPrevod[0] += '0';
+				bufferPrevod[1] += '0';
+				bufferPrevod[2] += '0';
+				bufferPrevod[4] = ' ';
+				bufferPrevod[5] = '\r';
+				bufferPrevod[6] = '\n';
+			}
+			sendStringByBufferUART(bufferPrevod, 7);
+			delay(100);
 	}
 }
 
