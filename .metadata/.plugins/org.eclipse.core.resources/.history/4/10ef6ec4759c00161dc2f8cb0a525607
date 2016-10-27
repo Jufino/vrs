@@ -37,7 +37,7 @@ int main(void) {
 		//setLedToggle();
 		//delay(hodnotaADC * 100);
 		if (toggleBitUart == 1) {
-			int prevedenaHodnota = (int)((3.3 / 4096) * hodnotaADC * 10);
+			int prevedenaHodnota = (int)((3.3 / 4096) * (float) hodnotaADC * 10);
 			bufferPrevod[0] = ((char)prevedenaHodnota)/10;
 			bufferPrevod[1] = '.';
 			bufferPrevod[2] = (char) (prevedenaHodnota-bufferPrevod[0]*10) + '0';

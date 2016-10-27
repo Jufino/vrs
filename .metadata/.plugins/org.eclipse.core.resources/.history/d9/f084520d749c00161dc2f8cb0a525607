@@ -3,7 +3,7 @@
 #include "kniznica.h"
 
 volatile int hodnotaADC = 0;
-volatile char toggleBitUart = 0;
+volatile int toggleBitUart = 0;
 
 void ADC1_IRQHandler(void) {
 	if (ADC1->SR & ADC_SR_EOC) {
@@ -26,7 +26,6 @@ void USART2_IRQHandler(void) {
 }
 
 int main(void) {
-	char bufferPrevod[7];
 	adc_init();
 	initLed();
 	initUART();
@@ -34,37 +33,12 @@ int main(void) {
 
 	/* Infinite loop */
 	while (1) {
-		//setLedToggle();
-		//delay(hodnotaADC * 100);
-		if (toggleBitUart == 1) {
-			int prevedenaHodnota = (int)((3.3 / 4096) * hodnotaADC * 10);
-			bufferPrevod[0] = ((char)prevedenaHodnota)/10;
-			bufferPrevod[1] = '.';
-			bufferPrevod[2] = (char) (prevedenaHodnota-bufferPrevod[0]*10) + '0';
-			bufferPrevod[0] += '0';
-			bufferPrevod[3] = 'V';
-			bufferPrevod[4] = ' ';
-			bufferPrevod[5] = '\r';
-			bufferPrevod[6] = '\n';
-		} else {
-			int hodnotaUpravena = 0;
-			bufferPrevod[0] = (char) (hodnotaADC / 1000);
-			hodnotaUpravena = (hodnotaADC - (int) bufferPrevod[0] * 1000);
-			bufferPrevod[1] = (char) (hodnotaUpravena / 100);
-			hodnotaUpravena = (hodnotaUpravena - (int) bufferPrevod[1] * 100);
-			bufferPrevod[2] = (char) (hodnotaUpravena / 10);
-			hodnotaUpravena = (hodnotaUpravena - (int) bufferPrevod[2] * 10);
-			bufferPrevod[3] = (char) (hodnotaUpravena) + '0';
-			bufferPrevod[0] += '0';
-			bufferPrevod[1] += '0';
-			bufferPrevod[2] += '0';
-			bufferPrevod[4] = ' ';
-			bufferPrevod[5] = '\r';
-			bufferPrevod[6] = '\n';
-		}
-		sendStringUART(bufferPrevod, 7);
-		delay(10000);
-
+		setLedToggle();
+		delay(hodnotaADC * 100);
+		if (toggleBitUart == 1)
+			sendStringUART("3.30V\n\r", 7);
+		else
+			sendStringUART("4095\n\r", 6);
 	}
 	return 0;
 }

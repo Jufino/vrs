@@ -42,10 +42,10 @@ int main(void) {
 		//setLedToggle();
 		//delay(hodnotaADC * 100);
 			if (toggleBitUart == 1){
-				float prevedenaHodnota = (3.3/4096)*(float)hodnotaADC;
-				bufferPrevod[0] = (char)prevedenaHodnota;
+				int prevedenaHodnota = (int)((3.3 / 4096) * hodnotaADC * 10);
+				bufferPrevod[0] = ((char)prevedenaHodnota)/10;
 				bufferPrevod[1] = '.';
-				bufferPrevod[2] = (char)((prevedenaHodnota-(float)bufferPrevod[0])/0.1)+'0';
+				bufferPrevod[2] = (char) (prevedenaHodnota-bufferPrevod[0]*10) + '0';
 				bufferPrevod[0] += '0';
 				bufferPrevod[3] = 'V';
 				bufferPrevod[4] = ' ';
