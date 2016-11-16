@@ -1,7 +1,8 @@
 #include <stddef.h>
+#include <tft/ili9163.h>
+#include <onewire/onewire.h>
 #include "stm32l1xx.h"
 #include "kniznica.h"
-#include "ili9163.h"
 
 volatile int hodnotaADC = 0;
 volatile int toggleBitUart = 0;
@@ -23,26 +24,23 @@ void USART2_IRQHandler(void) {
 			else
 				toggleBitUart = 1;
 		}
-	}
-	else if(USART_GetITStatus(USART2, USART_IT_TC) != RESET) {
+	} else if (USART_GetITStatus(USART2, USART_IT_TC) != RESET) {
 		USART_ClearITPendingBit(USART2, USART_IT_TC);
 		callbackTXUART();
 	}
 }
 
-int main(void)
-{
-  int i = 0;
+int main(void) {
 
-  lcdInitialise(LCD_ORIENTATION0);
-  lcdClearDisplay(decodeRgbValue(0, 0, 0));
-  lcdPutS("Hello", 20, 20, decodeRgbValue(0, 0, 0), decodeRgbValue(31, 31, 31));
 
-    while (1)
-  {
-
-  }
-  return 0;
+	lcdInitialise(LCD_ORIENTATION0);
+	lcdClearDisplay(decodeRgbValue(0, 0, 0));
+	lcdPutS("Hello", 0, 0, decodeRgbValue(31, 31, 31), decodeRgbValue(0, 0, 0));
+	//OneWireInit();
+	while (1) {
+	//	ReportTemperature();
+	}
+	return 0;
 }
 
 #ifdef  USE_FULL_ASSERT

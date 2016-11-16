@@ -29,6 +29,11 @@
 
 #include <stdint.h>
 
+#define LCD_WIDTH 128
+#define LCD_HEIGHT 128
+#define LCD_X_OFFSET 0
+#define LCD_Y_OFFSET 32
+
 // Screen orientation defines:
 // 0 = Ribbon at top
 // 1 = Ribbon at left
@@ -124,14 +129,21 @@ void lcdWriteParameter(uint8_t parameter);
 void lcdWriteData(uint8_t dataByte1, uint8_t dataByte2);
 void lcdInitialise(uint8_t orientation);
 
+void lcdDisplayPossitionAndSize(uint16_t x, uint16_t y, uint16_t width,
+		uint16_t height);
 void lcdClearDisplay(uint16_t colour);
 void lcdPlot(uint8_t x, uint8_t y, uint16_t colour);
 void lcdLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t colour);
-void lcdRectangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t colour);
-void lcdFilledRectangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t colour);
-void lcdCircle(int16_t xCentre, int16_t yCentre, int16_t radius, uint16_t colour);
+void lcdRectangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
+		uint16_t colour);
+void lcdFilledRectangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
+		uint16_t colour);
+void lcdCircle(int16_t xCentre, int16_t yCentre, int16_t radius,
+		uint16_t colour);
 
-void lcdPutCh(unsigned char character, uint8_t x, uint8_t y, uint16_t fgColour, uint16_t bgColour);
-void lcdPutS(const char *string, uint8_t x, uint8_t y, uint16_t fgColour, uint16_t bgColour);
+void lcdPutCh(unsigned char character, uint8_t x, uint8_t y, uint16_t fgColour,
+		uint16_t bgColour);
+void lcdPutS(const char *string, uint8_t x, uint8_t y, uint16_t fgColour,
+		uint16_t bgColour);
 
 #endif /* ILI9163LCD_H_ */

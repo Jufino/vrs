@@ -1,4 +1,4 @@
-#include "spi.h"
+#include <tft/spi.h>
 
 //TODO rework to STM32L mcu's
 

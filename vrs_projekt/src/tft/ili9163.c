@@ -25,10 +25,9 @@
  */
 
 #include <string.h>
-
-#include "ili9163.h" // https://cdn-shop.adafruit.com/datasheets/ILI9341.pdf
-#include "font5x8.h"
-#include "spi.h"
+#include <tft/font5x8.h>
+#include <tft/ili9163.h> // https://cdn-shop.adafruit.com/datasheets/ILI9341.pdf
+#include <tft/spi.h>
 
 void Delay(uint16_t n) {
 	uint32_t nl = n * 2;
@@ -148,18 +147,6 @@ void lcdInitialise(uint8_t orientation) {
 	lcdWriteCommand(VCOM_OFFSET_CONTROL);
 	lcdWriteParameter(0x40); // nVM = 0, VMF = 64: VCOMH output = VMH, VCOML output = VML
 
-	lcdWriteCommand(SET_COLUMN_ADDRESS);
-	lcdWriteParameter(0x00); // XSH
-	lcdWriteParameter(0x00); // XSL
-	lcdWriteParameter(0x00); // XEH
-	lcdWriteParameter(128); // XEL (128 pixels x)
-
-	lcdWriteCommand(SET_PAGE_ADDRESS);
-	lcdWriteParameter(0x00);
-	lcdWriteParameter(0x00);
-	lcdWriteParameter(0x00);
-	lcdWriteParameter(159); // 128 pixels y
-
 	// Select display orientation
 	lcdWriteCommand(SET_ADDRESS_MODE);
 	lcdWriteParameter(orientation);
@@ -170,28 +157,31 @@ void lcdInitialise(uint8_t orientation) {
 	device_Unselect();
 }
 
-// LCD graphics functions -----------------------------------------------------------------------------------
-
-void lcdClearDisplay(uint16_t colour) {
-	uint16_t pixel;
-	device_Select();
-	// Set the column address to 0-127
+void lcdDisplayPossitionAndSize(uint16_t x, uint16_t y, uint16_t width,
+		uint16_t height) {
 	lcdWriteCommand(SET_COLUMN_ADDRESS);
-	lcdWriteParameter(0x00);
-	lcdWriteParameter(0x00);
-	lcdWriteParameter(0x00);
-	lcdWriteParameter(127);
+	lcdWriteParameter((x + LCD_X_OFFSET) >> 8);
+	lcdWriteParameter((x + LCD_X_OFFSET));
+	lcdWriteParameter((x + width + LCD_X_OFFSET) >> 8);
+	lcdWriteParameter((x + width + LCD_X_OFFSET));
 
 	// Set the page address to 0-127
 	lcdWriteCommand(SET_PAGE_ADDRESS);
-	lcdWriteParameter(0x00);
-	lcdWriteParameter(0x00);
-	lcdWriteParameter(0x00);
-	lcdWriteParameter(159);
+	lcdWriteParameter((y + LCD_Y_OFFSET) >> 8);
+	lcdWriteParameter((y + LCD_Y_OFFSET));
+	lcdWriteParameter((y + height + LCD_Y_OFFSET) >> 8);
+	lcdWriteParameter((y + height + LCD_Y_OFFSET));
+}
 
+// LCD graphics functions -----------------------------------------------------------------------------------
+void lcdClearDisplay(uint16_t colour) {
+	uint16_t pixel;
+	device_Select();
+
+	lcdDisplayPossitionAndSize(0, 0, LCD_WIDTH, LCD_HEIGHT);
 	// Plot the pixels
 	lcdWriteCommand(WRITE_MEMORY_START);
-	for (pixel = 0; pixel < (128*160); pixel++)
+	for (pixel = 0; pixel < (128 * 160); pixel++)
 		lcdWriteData(colour >> 8, colour);
 	device_Unselect();
 
@@ -199,19 +189,8 @@ void lcdClearDisplay(uint16_t colour) {
 
 void lcdPlot(uint8_t x, uint8_t y, uint16_t colour) {
 	device_Select();
-	// Horizontal Address Start Position
-	lcdWriteCommand(SET_COLUMN_ADDRESS);
-	lcdWriteParameter(0x00);
-	lcdWriteParameter(x);
-	lcdWriteParameter(0x00);
-	lcdWriteParameter(0x7f);
 
-	// Vertical Address end Position
-	lcdWriteCommand(SET_PAGE_ADDRESS);
-	lcdWriteParameter(0x00);
-	lcdWriteParameter(y);
-	lcdWriteParameter(0x00);
-	lcdWriteParameter(0x7f); //7f
+	lcdDisplayPossitionAndSize(x, y, LCD_WIDTH, LCD_HEIGHT);
 
 	// Plot the point
 	lcdWriteCommand(WRITE_MEMORY_START);
@@ -289,20 +268,8 @@ void lcdFilledRectangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
 		uint16_t colour) {
 	uint16_t pixels;
 	device_Select();
-	// To speed up plotting we define a x window with the width of the
-	// rectangle and then just output the required number of bytes to
-	// fill down to the end point
-	lcdWriteCommand(SET_COLUMN_ADDRESS); // Horizontal Address Start Position
-	lcdWriteParameter(0x00);
-	lcdWriteParameter(x0);
-	lcdWriteParameter(0x00);
-	lcdWriteParameter(x1);
 
-	lcdWriteCommand(SET_PAGE_ADDRESS); // Vertical Address end Position
-	lcdWriteParameter(0x00);
-	lcdWriteParameter(y0);
-	lcdWriteParameter(0x00);
-	lcdWriteParameter(y1);
+	lcdDisplayPossitionAndSize(x0, x1, x1 - x0, y1 - y0);
 
 	lcdWriteCommand(WRITE_MEMORY_START);
 
@@ -348,31 +315,21 @@ void lcdCircle(int16_t xCentre, int16_t yCentre, int16_t radius,
 void lcdPutCh(unsigned char character, uint8_t x, uint8_t y, uint16_t fgColour,
 		uint16_t bgColour) {
 	uint8_t row, column;
-	// To speed up plotting we define a x window of 6 pixels and then
-	// write out one row at a time.  This means the LCD will correctly
-	// update the memory pointer saving us a good few bytes
-	device_Select();
-	lcdWriteCommand(SET_COLUMN_ADDRESS); // Horizontal Address Start Position
-	lcdWriteParameter(0x00);
-	lcdWriteParameter(x);
-	lcdWriteParameter(0x00);
-	lcdWriteParameter(x + 5);
 
-	lcdWriteCommand(SET_PAGE_ADDRESS); // Vertical Address end Position
-	lcdWriteParameter(0x00);
-	lcdWriteParameter(y);
-	lcdWriteParameter(0x00);
-	lcdWriteParameter(159);
+	device_Select();
+
+		lcdDisplayPossitionAndSize(x, y, 5, 8);
 
 	lcdWriteCommand(WRITE_MEMORY_START);
 
 	// Plot the font data
 	for (row = 0; row < 8; row++) {
 		for (column = 0; column < 6; column++) {
-			if ((font5x8[character][column]) & (1 << row))
-				lcdWriteData(fgColour >> 8, fgColour);
-			else
-				lcdWriteData(bgColour >> 8, bgColour);
+
+				if ((font5x8[character][column]) & (1 << row))
+					lcdWriteData(fgColour >> 8, fgColour);
+				else
+					lcdWriteData(bgColour >> 8, bgColour);
 		}
 	}
 	device_Unselect();
@@ -402,7 +359,6 @@ void lcdPutS(const char *string, uint8_t x, uint8_t y, uint16_t fgColour,
 		uint16_t bgColour) {
 	uint8_t origin = x;
 	uint8_t characterNumber;
-	device_Select();
 	for (characterNumber = 0; characterNumber < strlen(string);
 			characterNumber++) {
 		// Check if we are out of bounds and move to
@@ -420,5 +376,4 @@ void lcdPutS(const char *string, uint8_t x, uint8_t y, uint16_t fgColour,
 		lcdPutCh(string[characterNumber], x, y, fgColour, bgColour);
 		x += 6;
 	}
-	device_Unselect();
 }
