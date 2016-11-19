@@ -1,48 +1,94 @@
 #include "onewire/onewire.h"
 
-/*
- *  OneWire_Init      hardware-specific configuration of 1-wire I/O
- */
 void OneWireInit(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
-	RCC_AHBPeriphClockCmd(ONEWIRE_CLK, ENABLE);        // route the clocks
+	RCC_AHBPeriphClockCmd(ONEWIRE_CLK, ENABLE);
 
-	GPIO_InitStructure.GPIO_Pin = ONEWIRE_PIN_MASK;  // select the pin to modify
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;      // set the mode to output
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_40MHz; // set the I/O speed to 100 MHz
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_OD; // set the output type to open-drain
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;  // set the pull-up to none
-	GPIO_Init(ONEWIRE_PORT, &GPIO_InitStructure);                // do the init
+	GPIO_InitStructure.GPIO_Pin = ONEWIRE_PIN_MASK;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_40MHz;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(ONEWIRE_PORT, &GPIO_InitStructure);
 }
 
-void SendInitialization(void) {
-	ONEWIRE_OUTPUT_HIGH;
-	ONEWIRE_CONFIG_OUTPUT;
-	DelayUs(500);
+uint8_t SendReset(void) {
+	uint8_t r;
+	uint8_t retries = 125;
 
-	ONEWIRE_OUTPUT_LOW;
-	DelayUs(500);
-
-	ONEWIRE_OUTPUT_HIGH;
+	//noInterrupts();
 	ONEWIRE_CONFIG_INPUT;
-	DelayUs(50);
+	//interrupts();
+	// wait until the wire is high... just in case
+	do {
+		if (--retries == 0) return 0;
+		DelayUsNOP(2000);
+	} while (!ONEWIRE_INPUT_READ);
+
+	//noInterrupts();
+	ONEWIRE_OUTPUT_LOW;
+	ONEWIRE_CONFIG_OUTPUT;	// drive output low
+	//interrupts();
+	DelayUsNOP(480);
+	//noInterrupts();
+	ONEWIRE_CONFIG_INPUT;	// allow it to float
+	DelayUsNOP(70);
+	r = !ONEWIRE_INPUT_READ;
+	//interrupts();
+	DelayUsNOP(410);
+	return r;
 }
 
-void SendByte(uint8_t val) {
-	uint8_t n;
-
-	for (n = 0; n < 8; n++) {
+void SendBit(uint8_t v)
+{
+	if (v & 1) {
+		//noInterrupts();
 		ONEWIRE_OUTPUT_LOW;
 		ONEWIRE_CONFIG_OUTPUT;
-		DelayUs(5);
-		if (val & 1)
-			ONEWIRE_OUTPUT_HIGH;
-		DelayUs(95);
+		DelayUsNOP(10);
 		ONEWIRE_OUTPUT_HIGH;
-		DelayUs(5);
+		//interrupts();
+		DelayUsNOP(50);
+	} else {
+		//noInterrupts();
+		ONEWIRE_OUTPUT_LOW;
+		ONEWIRE_CONFIG_OUTPUT;
+		DelayUsNOP(55);
+		ONEWIRE_OUTPUT_HIGH;
+		//interrupts();
+		DelayUsNOP(5);
+	}
+}
+
+void SendByte(uint8_t val,uint8_t power) {
+	uint8_t n;
+	for (n = 0; n < 8; n++) {
+		SendBit(val & 1);
 		val = val >> 1;
 	}
+    if ( !power) {
+	//noInterrupts();
+    	ONEWIRE_CONFIG_INPUT;
+    	ONEWIRE_OUTPUT_LOW;
+	//interrupts();
+    }
+}
+
+uint8_t ReadBit(void)
+{
+	uint8_t r;
+
+	//noInterrupts();
+	ONEWIRE_CONFIG_OUTPUT;
+	ONEWIRE_OUTPUT_LOW;
+	DelayUsNOP(3);
+	ONEWIRE_CONFIG_INPUT;
+	DelayUsNOP(10);
+	r = ONEWIRE_INPUT_READ;
+	//interrupts();
+	DelayUsNOP(60);
+	return r;
 }
 
 uint8_t ReadByte(void) {
@@ -52,38 +98,70 @@ uint8_t ReadByte(void) {
 	val = 0;
 	for (n = 0; n < 8; n++) {
 		val = val >> 1;
-		ONEWIRE_OUTPUT_LOW;
-		ONEWIRE_CONFIG_OUTPUT;
-		DelayUs(15);
-		ONEWIRE_OUTPUT_HIGH;
-		ONEWIRE_CONFIG_INPUT;
-		DelayUs(10);
-		if (ONEWIRE_INPUT_READ)
+		if (ReadBit())
 			val = val | 0x80;
-		DelayUs(35);
+		DelayUsNOP(35);
 	}
 	return val;
 }
+
+void SendSelect(const uint8_t rom[8])
+{
+    uint8_t i;
+    SendByte(0x55,0);
+    for (i = 0; i < 8; i++) SendByte(rom[i],0);
+}
+
+#define CONVERT 0x44
 #define SKIP_ROM 0xCC
+#define WRITE_SCRATCHPAD 0x4E
 #define READ_SCRATCHPAD 0xBE
-void ReportTemperature(void) {
-	uint32_t val;
-	uint32_t t;
-	uint32_t frac;
+#define COPY_SCRATCH     0x48
+float getTemperature(void) {
 	uint8_t n;
 	uint8_t pad[10];
-	SendInitialization();
-	DelayUs(100);
-	SendByte(SKIP_ROM);
+	const uint8_t address[] = {0x28, 0x5E, 0x02, 0xF5, 0x00, 0x00, 0x00, 0x50};
+/*
+	SendReset();
+	SendSelect(address);
+	SendByte(WRITE_SCRATCHPAD);
+	SendByte(120); // high alarm temp
+	SendByte(-55); // low alarm temp
+
+	SendByte(0x7F); // nastav 12 bit resolution
+    // save the newly written values to eeprom
+	SendByte(COPY_SCRATCH);
+	DelayUsNOP(20);*/
+/*
+	SendReset();
+	SendSelect(address);
+	SendByte(CONVERT);
+	DelayMs(1000);
+	SendReset();
+	SendSelect(address);
 	SendByte(READ_SCRATCHPAD);
+*/
+	SendReset();
+	SendSelect(address);
+	SendByte(CONVERT,1);
+	DelayMs(3000);
+	SendReset();
+	SendSelect(address);
+	SendByte(READ_SCRATCHPAD,0);
+
 	for (n = 0; n < 9; n++) {
 		pad[n] = ReadByte();
 	}
-	val = (pad[1] * 256 + pad[0]);             // temp in 0.5 degs C
-	t = val;
-	val = val >> 1;                            // temp in degs C
-	frac = 0;
-	if ((val << 1) != t)
-		frac = 5;            // if the roll lost a bit, allow for 0.5 deg C
-	printf("\n\rTemperature is: %d.%d degrees C", val, frac);
+
+	int16_t val = ((pad[1]&0x07) << 8) | pad[0];
+	int8_t cfg = (pad[4] & 0x60);
+    // at lower res, the low bits are undefined, so let's zero them
+    if (cfg == 0x00) val = val & ~7;  // 9 bit resolution, 93.75 ms
+    else if (cfg == 0x20) val = val & ~3; // 10 bit res, 187.5 ms
+    else if (cfg == 0x40) val = val & ~1; // 11 bit res, 375 ms
+    //// default is 12 bit resolution, 750 ms conversion time
+
+	float temperature = (float)(val) /16;
+	if((pad[1]&0xF8) == 0xF8) temperature = temperature*-1;
+	return temperature;
 }

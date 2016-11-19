@@ -1,44 +1,57 @@
 #include <stddef.h>
+#include <stdio.h>
+#include <math.h>
 #include <tft/ili9163.h>
 #include <onewire/onewire.h>
+#include <delay/delay.h>
+#include <regulator/regulator.h>
 #include "stm32l1xx.h"
-#include "kniznica.h"
 
-volatile int hodnotaADC = 0;
-volatile int toggleBitUart = 0;
-
-void ADC1_IRQHandler(void) {
-	if (ADC1->SR & ADC_SR_EOC) {
-		hodnotaADC = ADC1->DR;
-	}
+void showPozadovanaHodnota(float temp){
+	char buffer[20];
+	const int decimalTemp = (int)temp;
+	const int fragmetTemp = round((temp-decimalTemp)*10);
+	const int riadok = 0;
+	sprintf (buffer, "Pozadovana:%d.%d", decimalTemp,fragmetTemp);
+	lcdRectangle(lcdTextX(0),lcdTextY(riadok),LCD_WIDTH,lcdTextY(riadok)+8,decodeRgbValue(0, 0, 0));
+	lcdPutS(buffer, lcdTextX(0), lcdTextY(riadok), decodeRgbValue(31, 31, 31), decodeRgbValue(0, 0, 0));
 }
 
-void USART2_IRQHandler(void) {
-	uint8_t pom = 0;
-	if (USART_GetITStatus(USART2, USART_IT_RXNE) != RESET) {
-		USART_ClearITPendingBit(USART2, USART_IT_RXNE);
-		pom = USART_ReceiveData(USART2);
-		if (pom == 'm') {
-			if (toggleBitUart == 1)
-				toggleBitUart = 0;
-			else
-				toggleBitUart = 1;
-		}
-	} else if (USART_GetITStatus(USART2, USART_IT_TC) != RESET) {
-		USART_ClearITPendingBit(USART2, USART_IT_TC);
-		callbackTXUART();
-	}
+void showAktualnaHodnota(float temp){
+	char buffer[20];
+	const int decimalTemp = (int)temp;
+	const int fragmetTemp = round((temp-decimalTemp)*10);
+	const int riadok = 1;
+	sprintf (buffer, "Aktualna:%d.%d", decimalTemp,fragmetTemp);
+	lcdRectangle(lcdTextX(0),lcdTextY(riadok),LCD_WIDTH,lcdTextY(riadok)+8,decodeRgbValue(0, 0, 0));
+	lcdPutS(buffer, lcdTextX(0), lcdTextY(riadok), decodeRgbValue(31, 31, 31), decodeRgbValue(0, 0, 0));
+}
+
+void showAkcnyZasah(int status){
+	char buffer[20];
+	const int riadok = 2;
+	sprintf (buffer, "Zasah:%d", status);
+	lcdRectangle(lcdTextX(0),lcdTextY(riadok),LCD_WIDTH,lcdTextY(riadok)+8,decodeRgbValue(0, 0, 0));
+	lcdPutS(buffer, lcdTextX(0), lcdTextY(riadok), decodeRgbValue(31, 31, 31), decodeRgbValue(0, 0, 0));
 }
 
 int main(void) {
 
-
-	lcdInitialise(LCD_ORIENTATION0);
+	lcdInitialise(LCD_ORIENTATION1);
 	lcdClearDisplay(decodeRgbValue(0, 0, 0));
-	lcdPutS("Hello", 0, 0, decodeRgbValue(31, 31, 31), decodeRgbValue(0, 0, 0));
-	//OneWireInit();
+	OneWireInit();
+	regulatorInit();
+
+	float pozadovanaHodnota = 56; // tu nahradit hociakym druhom nastavovania ziadanej hodnoty
+	setPozadovanaHodnota(pozadovanaHodnota);
+	showPozadovanaHodnota(pozadovanaHodnota);
+	showAktualnaHodnota(0);
+	showAkcnyZasah(0);
 	while (1) {
-	//	ReportTemperature();
+		float actualTemperature = getTemperature();
+		showAktualnaHodnota(actualTemperature);
+		showAkcnyZasah(setAktualnaHodnota(actualTemperature));
+		DelayMs(200);
 	}
 	return 0;
 }

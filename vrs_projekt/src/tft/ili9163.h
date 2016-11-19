@@ -31,8 +31,8 @@
 
 #define LCD_WIDTH 128
 #define LCD_HEIGHT 128
-#define LCD_X_OFFSET 0
-#define LCD_Y_OFFSET 32
+#define LCD_X_OFFSET 32
+#define LCD_Y_OFFSET 0
 
 // Screen orientation defines:
 // 0 = Ribbon at top

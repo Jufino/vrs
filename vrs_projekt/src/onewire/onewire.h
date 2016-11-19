@@ -13,15 +13,16 @@
 #define ONEWIRE_OUTPUT_HIGH            ONEWIRE_PORT->BSRRL=ONEWIRE_PIN_MASK
 #define ONEWIRE_OUTPUT_LOW             ONEWIRE_PORT->BSRRH=ONEWIRE_PIN_MASK
 #define ONEWIRE_CONFIG_OUTPUT          ONEWIRE_PORT->MODER|=(GPIO_Mode_OUT<<(ONEWIRE_PIN_NUM*2))
-#define ONEWIRE_CONFIG_INPUT           ONEWIRE_PORT->MODER&=~(GPIO_MODER_MODER0<<(ONEWIRE_PIN_NUM*2))
+#define ONEWIRE_CONFIG_INPUT           ONEWIRE_PORT->MODER&=~(0b11<<(ONEWIRE_PIN_NUM*2))
 
 #include "onewire/onewire.h"
 
 void OneWireInit(void);
-void SendInitialization(void);
-void SendByte(uint8_t val);
+uint8_t SendReset(void);
+void SendByte(uint8_t val,uint8_t power);
 uint8_t ReadByte(void);
-void ReportTemperature(void);
+void SendSelect(const uint8_t rom[8]);
+float getTemperature(void);
 
 
 #endif
