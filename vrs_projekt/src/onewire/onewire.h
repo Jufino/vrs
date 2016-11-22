@@ -4,7 +4,7 @@
 #include <delay/delay.h>
 #include "stm32l1xx.h"
 
-#define ONEWIRE_PIN_NUM                 0
+#define ONEWIRE_PIN_NUM                 4
 #define ONEWIRE_PIN_MASK                (1<<ONEWIRE_PIN_NUM)
 #define ONEWIRE_PORT                    GPIOA
 #define ONEWIRE_CLK                     RCC_AHBPeriph_GPIOA

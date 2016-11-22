@@ -54,7 +54,7 @@ void SendBit(uint8_t v)
 		//noInterrupts();
 		ONEWIRE_OUTPUT_LOW;
 		ONEWIRE_CONFIG_OUTPUT;
-		DelayUsNOP(55);
+		DelayUsNOP(70);
 		ONEWIRE_OUTPUT_HIGH;
 		//interrupts();
 		DelayUsNOP(5);
@@ -67,12 +67,8 @@ void SendByte(uint8_t val,uint8_t power) {
 		SendBit(val & 1);
 		val = val >> 1;
 	}
-    if ( !power) {
-	//noInterrupts();
-    	ONEWIRE_CONFIG_INPUT;
-    	ONEWIRE_OUTPUT_LOW;
-	//interrupts();
-    }
+    	ONEWIRE_CONFIG_OUTPUT;
+    	ONEWIRE_OUTPUT_HIGH;
 }
 
 uint8_t ReadBit(void)
@@ -82,7 +78,6 @@ uint8_t ReadBit(void)
 	//noInterrupts();
 	ONEWIRE_CONFIG_OUTPUT;
 	ONEWIRE_OUTPUT_LOW;
-	DelayUsNOP(3);
 	ONEWIRE_CONFIG_INPUT;
 	DelayUsNOP(10);
 	r = ONEWIRE_INPUT_READ;

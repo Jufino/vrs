@@ -1,11 +1,36 @@
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 #include <tft/ili9163.h>
-#include <onewire/onewire.h>
 #include <delay/delay.h>
 #include <regulator/regulator.h>
 #include "stm32l1xx.h"
+
+volatile static uint8_t bufferRead[5];
+volatile static uint8_t index = 0;
+volatile uint8_t dataReady = 0;
+void USART3_IRQHandler(void) {
+	uint8_t pom = 0;
+	if (USART_GetITStatus(USART3, USART_IT_RXNE) != RESET) {
+		USART_ClearITPendingBit(USART3, USART_IT_RXNE);
+		pom = USART_ReceiveData(USART3);
+		if(dataReady != 1){
+		if(pom == '\n' || pom == '\r' || index > 5){
+			bufferRead[index] = '\0';
+			index = 0;
+			dataReady = 1;
+		}
+		else{
+			bufferRead[index++] = pom;
+			dataReady = 0;
+		}
+		}
+	}
+}
+
+
+
 
 void showPozadovanaHodnota(float temp){
 	char buffer[20];
@@ -35,23 +60,31 @@ void showAkcnyZasah(int status){
 	lcdPutS(buffer, lcdTextX(0), lcdTextY(riadok), decodeRgbValue(31, 31, 31), decodeRgbValue(0, 0, 0));
 }
 
+float getTemp(void){
+	while(dataReady != 1);
+	float temp = atof(bufferRead);
+	dataReady= 0;
+	return temp;
+}
+
 int main(void) {
 
 	lcdInitialise(LCD_ORIENTATION1);
 	lcdClearDisplay(decodeRgbValue(0, 0, 0));
-	OneWireInit();
 	regulatorInit();
+	initUART();
 
-	float pozadovanaHodnota = 56; // tu nahradit hociakym druhom nastavovania ziadanej hodnoty
+	float pozadovanaHodnota = 33; // tu nahradit hociakym druhom nastavovania ziadanej hodnoty
+	float aktualnaHodnota = 0;
 	setPozadovanaHodnota(pozadovanaHodnota);
 	showPozadovanaHodnota(pozadovanaHodnota);
-	showAktualnaHodnota(0);
+	showAktualnaHodnota(aktualnaHodnota);
 	showAkcnyZasah(0);
 	while (1) {
-		float actualTemperature = getTemperature();
-		showAktualnaHodnota(actualTemperature);
-		showAkcnyZasah(setAktualnaHodnota(actualTemperature));
-		DelayMs(200);
+		aktualnaHodnota = getTemp();
+		showAktualnaHodnota(aktualnaHodnota);
+		showAkcnyZasah(setAktualnaHodnota(aktualnaHodnota));
+		DelayMs(100);
 	}
 	return 0;
 }
