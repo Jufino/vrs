@@ -3,7 +3,8 @@
 
 #include "stm32l1xx.h"
 
-#define REGULATOR_HYSTERESIS 			  5
+#define REGULATOR_HYSTERESIS_UP 			  0
+#define REGULATOR_HYSTERESIS_DOWN 			  0.5
 #define REGULATOR_INVERSE				  1
 
 #define REGULATOR_PIN_NUM                 GPIO_Pin_1
@@ -15,6 +16,8 @@
 void regulatorInit(void);
 
 void vygenerujAkcnyZasah(float pozadovana,float aktualna);
+
+void setAkcnyZasah(char status);
 
 char getAkcnyZasah();
 

@@ -1,5 +1,5 @@
 #include <regulator/regulator.h>
-
+int dynamicHysterese = 0;
 void regulatorInit(void){
 	GPIO_InitTypeDef GPIO_InitStructure;
 
@@ -18,20 +18,39 @@ void regulatorInit(void){
 		REGULATOR_OUTPUT_HIGH;
 }
 
-void vygenerujAkcnyZasah(float pozadovana,float aktualna){
-	float odchylka = pozadovana-aktualna;
-
-	if(odchylka > REGULATOR_HYSTERESIS){
+void setAkcnyZasah(char status){
+	if(status == 0){
+	if(!REGULATOR_INVERSE)
+		REGULATOR_OUTPUT_LOW;
+	else
+		REGULATOR_OUTPUT_HIGH;
+	}
+	else{
 		if(!REGULATOR_INVERSE)
 			REGULATOR_OUTPUT_HIGH;
 		else
 			REGULATOR_OUTPUT_LOW;
 	}
-	else if(odchylka < -REGULATOR_HYSTERESIS){
-		if(!REGULATOR_INVERSE)
-			REGULATOR_OUTPUT_LOW;
+}
+
+void vygenerujAkcnyZasah(float pozadovana,float aktualna){
+	float pomocna = (pozadovana-aktualna)/10;
+	if(pomocna > dynamicHysterese){
+		if(pomocna > REGULATOR_HYSTERESIS_DOWN)
+			dynamicHisterese = -REGULATOR_HYSTERESIS_DOWN;
+		else if(pomocna < 0)
+			dynamicHysterese = 0;
 		else
-			REGULATOR_OUTPUT_HIGH;
+			dynamicHysterese = -pomocna;
+	}
+
+	if(aktualna >= (pozadovana+REGULATOR_HYSTERESIS_UP+dynamicHysterese)){
+		dynamicHysterese = 0;
+		setAkcnyZasah(0);
+	}
+	else if(aktualna <= (pozadovana-REGULATOR_HYSTERESIS_DOWN)){
+		dynamicHysterese = (pozadovana-aktualna)/10;
+		setAkcnyZasah(1);
 	}
 }
 
