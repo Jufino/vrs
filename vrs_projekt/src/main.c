@@ -3,82 +3,22 @@
 #include <onewire/onewire.h>
 #include <regulator/regulator.h>
 #include <tft/ili9163.h>
+#include <tft/graf.h>
+#include <tft/texty.h>
 #include "stm32l1xx.h"
 
 #include  <stdio.h>
 
 volatile float valuePozadovana = 0;
 volatile float valueAktualna = 0;
-volatile char isShowtextPozadovana = 0;
-volatile char isShowtextAktualna = 0;
-volatile char isShowtextAkcnyZasah = 0;
-volatile float lastShowedValuePozadovana = -100;
-volatile float lastShowedValueAktualna = -100;
-volatile float lastShowedValueZasah = -100;
-
-void showPozadovanaHodnota(float temp) {
-	if (temp != lastShowedValuePozadovana) {
-		char buffer[20];
-		const int decimalTemp = (int) temp;
-		const int fragmetTemp = round((temp - decimalTemp) * 10);
-		const int riadok = 0;
-		sprintf(buffer, "%d.%d", decimalTemp, fragmetTemp);
-
-		if (!isShowtextPozadovana) {
-			lcdPutS("Pozadovana:", lcdTextX(0), lcdTextY(riadok),
-					decodeRgbValue(31, 31, 31), decodeRgbValue(0, 0, 0));
-		}
-		lcdPutS("00.00", lcdTextX(12), lcdTextY(riadok),
-				decodeRgbValue(31, 31, 31), decodeRgbValue(0, 0, 0));
-		lcdPutS(buffer, lcdTextX(12), lcdTextY(riadok),
-				decodeRgbValue(31, 31, 31), decodeRgbValue(0, 0, 0));
-		lastShowedValuePozadovana = temp;
-	}
-
-}
-
-void showAktualnaHodnota(float temp) {
-	if (temp != lastShowedValueAktualna) {
-		char buffer[20];
-		const int decimalTemp = (int) temp;
-		const int fragmetTemp = round((temp - decimalTemp) * 10);
-		const int riadok = 1;
-		sprintf(buffer, "%d.%d", decimalTemp, fragmetTemp);
-
-		if (!isShowtextPozadovana) {
-			lcdPutS("Aktualna:", lcdTextX(0), lcdTextY(riadok),
-					decodeRgbValue(31, 31, 31), decodeRgbValue(0, 0, 0));
-		}
-		lcdPutS("00.00", lcdTextX(12), lcdTextY(riadok),
-				decodeRgbValue(31, 31, 31), decodeRgbValue(0, 0, 0));
-		lcdPutS(buffer, lcdTextX(12), lcdTextY(riadok),
-				decodeRgbValue(31, 31, 31), decodeRgbValue(0, 0, 0));
-		lastShowedValueAktualna = temp;
-	}
-}
-
-void showAkcnyZasah(int status) {
-	if (lastShowedValueZasah != status) {
-		const int riadok = 2;
-		if (!isShowtextPozadovana) {
-			lcdPutS("Zasah:", lcdTextX(0), lcdTextY(riadok),
-					decodeRgbValue(31, 31, 31), decodeRgbValue(0, 0, 0));
-		}
-		if (status == 0)
-			lcdPutS("0", lcdTextX(12), lcdTextY(riadok),
-					decodeRgbValue(31, 31, 31), decodeRgbValue(0, 0, 0));
-		else
-			lcdPutS("1", lcdTextX(12), lcdTextY(riadok),
-					decodeRgbValue(31, 31, 31), decodeRgbValue(0, 0, 0));
-		lastShowedValueZasah = status;
-	}
-}
 
 void ADC1_IRQHandler(void) {
 	if (ADC1->SR & ADC_SR_EOC) {
 		float hodnotaADC = ADC1->DR;
 		valuePozadovana = (hodnotaADC / 80) + 20;
-		showPozadovanaHodnota(valuePozadovana);
+		hodnotaADC = valuePozadovana;
+		showPozadovanaHodnota(hodnotaADC);
+		pridajPozadovanuHodnotuDoGrafu(hodnotaADC);
 	}
 }
 
@@ -130,12 +70,12 @@ void adc_init(void) {
 }
 
 int main(void) {
-	//delayInit();
 	OW_Init();
 	lcdInitialise(LCD_ORIENTATION1);
 	lcdClearDisplay(decodeRgbValue(0, 0, 0));
 	regulatorInit();
 	adc_init();
+	vykresliOsiGrafu();
 	while (1) {
 		ADC_SoftwareStartConv(ADC1);
 		OW_Send(OW_SEND_RESET, "\xcc\x44", 2, NULL, NULL, OW_NO_READ);
@@ -145,9 +85,10 @@ int main(void) {
 		OW_Send(OW_SEND_RESET, "\xcc\xbe\xff\xff", 4, buf, 2, 2);
 		//-----------------
 		float teplota = (float) ((buf[1] << 8) | buf[0]) / 16.0;
-		valueAktualna=teplota;
-		showAktualnaHodnota(valueAktualna);
-		vygenerujAkcnyZasah(valuePozadovana,teplota);
+		valueAktualna = teplota;
+		pridajAktualnuHodnotuDoGrafu(teplota);
+		showAktualnaHodnota(teplota);
+		vygenerujAkcnyZasah(valuePozadovana, teplota);
 		showAkcnyZasah(getAkcnyZasah());
 	}
 	return 0;

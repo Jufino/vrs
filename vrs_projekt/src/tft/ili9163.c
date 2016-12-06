@@ -181,7 +181,7 @@ void lcdClearDisplay(uint16_t colour) {
 	lcdDisplayPossitionAndSize(0, 0, LCD_WIDTH, LCD_HEIGHT);
 	// Plot the pixels
 	lcdWriteCommand(WRITE_MEMORY_START);
-	for (pixel = 0; pixel < (128 * 160); pixel++)
+	for (pixel = 0; pixel < (LCD_WIDTH * LCD_HEIGHT); pixel++)
 		lcdWriteData(colour >> 8, colour);
 	device_Unselect();
 
@@ -190,7 +190,7 @@ void lcdClearDisplay(uint16_t colour) {
 void lcdPlot(uint8_t x, uint8_t y, uint16_t colour) {
 	device_Select();
 
-	lcdDisplayPossitionAndSize(x, y, LCD_WIDTH, LCD_HEIGHT);
+	lcdDisplayPossitionAndSize(x, y, 1, 1);
 
 	// Plot the point
 	lcdWriteCommand(WRITE_MEMORY_START);

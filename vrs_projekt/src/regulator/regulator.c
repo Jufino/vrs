@@ -37,7 +37,7 @@ void vygenerujAkcnyZasah(float pozadovana,float aktualna){
 	float pomocna = (pozadovana-aktualna)/10;
 	if(pomocna > dynamicHysterese){
 		if(pomocna > REGULATOR_HYSTERESIS_DOWN)
-			dynamicHisterese = -REGULATOR_HYSTERESIS_DOWN;
+			dynamicHysterese = -REGULATOR_HYSTERESIS_DOWN;
 		else if(pomocna < 0)
 			dynamicHysterese = 0;
 		else
