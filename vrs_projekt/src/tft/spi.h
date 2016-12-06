@@ -16,8 +16,8 @@
 
 #include "stm32l1xx.h"
 
-void initSPI2(void);
-unsigned char readWriteSPI2(unsigned char txData);
+void initSPI1(void);
+unsigned char readWriteSPI1(unsigned char txData);
 
 //Example of CS use
 void initCS_Pin(void);

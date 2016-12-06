@@ -1,162 +1,184 @@
-#include "onewire/onewire.h"
+#include <onewire/onewire.h>
 
-void OneWireInit(void) {
-	GPIO_InitTypeDef GPIO_InitStructure;
+#define OW_USART 		UART4
+#define OW_DMA_CH_RX 	DMA2_Channel3
+#define OW_DMA_CH_TX 	DMA2_Channel5
+#define OW_DMA_FLAG		DMA2_FLAG_TC3
 
-	RCC_AHBPeriphClockCmd(ONEWIRE_CLK, ENABLE);
+uint8_t ow_buf[8];
+#define OW_0	0x00
+#define OW_1	0xff
+#define OW_R_1	0xff
 
-	GPIO_InitStructure.GPIO_Pin = ONEWIRE_PIN_MASK;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_40MHz;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_Init(ONEWIRE_PORT, &GPIO_InitStructure);
-}
-
-uint8_t SendReset(void) {
-	uint8_t r;
-	uint8_t retries = 125;
-
-	//noInterrupts();
-	ONEWIRE_CONFIG_INPUT;
-	//interrupts();
-	// wait until the wire is high... just in case
-	do {
-		if (--retries == 0) return 0;
-		DelayUsNOP(2000);
-	} while (!ONEWIRE_INPUT_READ);
-
-	//noInterrupts();
-	ONEWIRE_OUTPUT_LOW;
-	ONEWIRE_CONFIG_OUTPUT;	// drive output low
-	//interrupts();
-	DelayUsNOP(480);
-	//noInterrupts();
-	ONEWIRE_CONFIG_INPUT;	// allow it to float
-	DelayUsNOP(70);
-	r = !ONEWIRE_INPUT_READ;
-	//interrupts();
-	DelayUsNOP(410);
-	return r;
-}
-
-void SendBit(uint8_t v)
-{
-	if (v & 1) {
-		//noInterrupts();
-		ONEWIRE_OUTPUT_LOW;
-		ONEWIRE_CONFIG_OUTPUT;
-		DelayUsNOP(10);
-		ONEWIRE_OUTPUT_HIGH;
-		//interrupts();
-		DelayUsNOP(50);
-	} else {
-		//noInterrupts();
-		ONEWIRE_OUTPUT_LOW;
-		ONEWIRE_CONFIG_OUTPUT;
-		DelayUsNOP(70);
-		ONEWIRE_OUTPUT_HIGH;
-		//interrupts();
-		DelayUsNOP(5);
+void OW_toBits(uint8_t ow_byte, uint8_t *ow_bits) {
+	uint8_t i;
+	for (i = 0; i < 8; i++) {
+		if (ow_byte & 0x01) {
+			*ow_bits = OW_1;
+		} else {
+			*ow_bits = OW_0;
+		}
+		ow_bits++;
+		ow_byte = ow_byte >> 1;
 	}
 }
 
-void SendByte(uint8_t val,uint8_t power) {
-	uint8_t n;
-	for (n = 0; n < 8; n++) {
-		SendBit(val & 1);
-		val = val >> 1;
-	}
-    	ONEWIRE_CONFIG_OUTPUT;
-    	ONEWIRE_OUTPUT_HIGH;
-}
-
-uint8_t ReadBit(void)
-{
-	uint8_t r;
-
-	//noInterrupts();
-	ONEWIRE_CONFIG_OUTPUT;
-	ONEWIRE_OUTPUT_LOW;
-	ONEWIRE_CONFIG_INPUT;
-	DelayUsNOP(10);
-	r = ONEWIRE_INPUT_READ;
-	//interrupts();
-	DelayUsNOP(60);
-	return r;
-}
-
-uint8_t ReadByte(void) {
-	uint8_t n;
-	uint8_t val;
-
-	val = 0;
-	for (n = 0; n < 8; n++) {
-		val = val >> 1;
-		if (ReadBit())
-			val = val | 0x80;
-		DelayUsNOP(35);
-	}
-	return val;
-}
-
-void SendSelect(const uint8_t rom[8])
-{
-    uint8_t i;
-    SendByte(0x55,0);
-    for (i = 0; i < 8; i++) SendByte(rom[i],0);
-}
-
-#define CONVERT 0x44
-#define SKIP_ROM 0xCC
-#define WRITE_SCRATCHPAD 0x4E
-#define READ_SCRATCHPAD 0xBE
-#define COPY_SCRATCH     0x48
-float getTemperature(void) {
-	uint8_t n;
-	uint8_t pad[10];
-	const uint8_t address[] = {0x28, 0x5E, 0x02, 0xF5, 0x00, 0x00, 0x00, 0x50};
-/*
-	SendReset();
-	SendSelect(address);
-	SendByte(WRITE_SCRATCHPAD);
-	SendByte(120); // high alarm temp
-	SendByte(-55); // low alarm temp
-
-	SendByte(0x7F); // nastav 12 bit resolution
-    // save the newly written values to eeprom
-	SendByte(COPY_SCRATCH);
-	DelayUsNOP(20);*/
-/*
-	SendReset();
-	SendSelect(address);
-	SendByte(CONVERT);
-	DelayMs(1000);
-	SendReset();
-	SendSelect(address);
-	SendByte(READ_SCRATCHPAD);
-*/
-	SendReset();
-	SendSelect(address);
-	SendByte(CONVERT,1);
-	DelayMs(3000);
-	SendReset();
-	SendSelect(address);
-	SendByte(READ_SCRATCHPAD,0);
-
-	for (n = 0; n < 9; n++) {
-		pad[n] = ReadByte();
+uint8_t OW_toByte(uint8_t *ow_bits) {
+	uint8_t ow_byte, i;
+	ow_byte = 0;
+	for (i = 0; i < 8; i++) {
+		ow_byte = ow_byte >> 1;
+		if (*ow_bits == OW_R_1) {
+			ow_byte |= 0x80;
+		}
+		ow_bits++;
 	}
 
-	int16_t val = ((pad[1]&0x07) << 8) | pad[0];
-	int8_t cfg = (pad[4] & 0x60);
-    // at lower res, the low bits are undefined, so let's zero them
-    if (cfg == 0x00) val = val & ~7;  // 9 bit resolution, 93.75 ms
-    else if (cfg == 0x20) val = val & ~3; // 10 bit res, 187.5 ms
-    else if (cfg == 0x40) val = val & ~1; // 11 bit res, 375 ms
-    //// default is 12 bit resolution, 750 ms conversion time
+	return ow_byte;
+}
 
-	float temperature = (float)(val) /16;
-	if((pad[1]&0xF8) == 0xF8) temperature = temperature*-1;
-	return temperature;
+uint8_t OW_Init() {
+        GPIO_InitTypeDef GPIO_InitStructure;
+        USART_InitTypeDef USART_InitStructure;
+        RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOC, ENABLE);
+                RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART4, ENABLE);
+                GPIO_PinAFConfig(GPIOC, GPIO_PinSource10, GPIO_AF_UART4);
+                GPIO_PinAFConfig(GPIOC, GPIO_PinSource11, GPIO_AF_UART4);
+
+
+                GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
+                GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+                GPIO_InitStructure.GPIO_Speed = GPIO_Speed_40MHz;
+                GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+                GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_UP;
+
+                GPIO_Init(GPIOC, &GPIO_InitStructure);
+
+                GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
+                GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+                GPIO_InitStructure.GPIO_Speed = GPIO_Speed_40MHz;
+                GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+                GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_UP;
+
+                GPIO_Init(GPIOC, &GPIO_InitStructure);
+
+        USART_InitStructure.USART_BaudRate = 115200;
+        USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+        USART_InitStructure.USART_StopBits = USART_StopBits_1;
+        USART_InitStructure.USART_Parity = USART_Parity_No;
+        USART_InitStructure.USART_HardwareFlowControl =
+                        USART_HardwareFlowControl_None;
+        USART_InitStructure.USART_Mode = USART_Mode_Tx;
+
+        USART_Init(UART4, &USART_InitStructure);
+        USART_Cmd(UART4, ENABLE);
+
+        RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA2, ENABLE);
+
+}
+
+uint8_t OW_Reset() {
+	uint8_t ow_presence;
+	USART_InitTypeDef USART_InitStructure;
+
+	USART_InitStructure.USART_BaudRate = 9600;
+	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+	USART_InitStructure.USART_StopBits = USART_StopBits_1;
+	USART_InitStructure.USART_Parity = USART_Parity_No;
+	USART_InitStructure.USART_HardwareFlowControl =
+			USART_HardwareFlowControl_None;
+	USART_InitStructure.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;
+	USART_Init(OW_USART, &USART_InitStructure);
+
+	// îňďđŕâë˙ĺě 0xf0 íŕ ńęîđîńňč 9600
+	USART_ClearFlag(OW_USART, USART_FLAG_TC);
+	USART_SendData(OW_USART, 0xf0);
+	while (USART_GetFlagStatus(OW_USART, USART_FLAG_TC) == RESET);
+
+	ow_presence = USART_ReceiveData(OW_USART);
+
+	USART_InitStructure.USART_BaudRate = 115200;
+	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+	USART_InitStructure.USART_StopBits = USART_StopBits_1;
+	USART_InitStructure.USART_Parity = USART_Parity_No;
+	USART_InitStructure.USART_HardwareFlowControl =
+			USART_HardwareFlowControl_None;
+	USART_InitStructure.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;
+	USART_Init(OW_USART, &USART_InitStructure);
+
+	if (ow_presence != 0xf0) {
+		return OW_OK;
+	}
+
+	return OW_NO_DEVICE;
+}
+
+uint8_t OW_Send(uint8_t sendReset, uint8_t *command, uint8_t cLen,
+		uint8_t *data, uint8_t dLen, uint8_t readStart) {
+
+	if (sendReset == OW_SEND_RESET) {
+		if (OW_Reset() == OW_NO_DEVICE) {
+			return OW_NO_DEVICE;
+		}
+	}
+
+	while (cLen > 0) {
+
+		OW_toBits(*command, ow_buf);
+		command++;
+		cLen--;
+
+		DMA_InitTypeDef DMA_InitStructure;
+
+		DMA_DeInit(OW_DMA_CH_RX);
+		DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t) &(OW_USART->DR);
+		DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t) ow_buf;
+		DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
+		DMA_InitStructure.DMA_BufferSize = 8;
+		DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+		DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+		DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+		DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+		DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
+		DMA_InitStructure.DMA_Priority = DMA_Priority_Low;
+		DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
+		DMA_Init(OW_DMA_CH_RX, &DMA_InitStructure);
+
+		DMA_DeInit(OW_DMA_CH_TX);
+		DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t) &(OW_USART->DR);
+		DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t) ow_buf;
+		DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;
+		DMA_InitStructure.DMA_BufferSize = 8;
+		DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+		DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+		DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+		DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+		DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
+		DMA_InitStructure.DMA_Priority = DMA_Priority_Low;
+		DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
+		DMA_Init(OW_DMA_CH_TX, &DMA_InitStructure);
+
+		USART_ClearFlag(OW_USART, USART_FLAG_RXNE | USART_FLAG_TC | USART_FLAG_TXE);
+		USART_DMACmd(OW_USART, USART_DMAReq_Tx | USART_DMAReq_Rx, ENABLE);
+		DMA_Cmd(OW_DMA_CH_RX, ENABLE);
+		DMA_Cmd(OW_DMA_CH_TX, ENABLE);
+
+		while (DMA_GetFlagStatus(OW_DMA_FLAG) == RESET);
+
+		DMA_Cmd(OW_DMA_CH_TX, DISABLE);
+		DMA_Cmd(OW_DMA_CH_RX, DISABLE);
+		USART_DMACmd(OW_USART, USART_DMAReq_Tx | USART_DMAReq_Rx, DISABLE);
+
+		if (readStart == 0 && dLen > 0) {
+			*data = OW_toByte(ow_buf);
+			data++;
+			dLen--;
+		} else {
+			if (readStart != OW_NO_READ) {
+				readStart--;
+			}
+		}
+	}
+
+	return OW_OK;
 }

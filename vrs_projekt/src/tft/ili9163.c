@@ -351,7 +351,7 @@ uint8_t lcdTextX(uint8_t x) {
 // returns the y coordinate on the screen (0-127) to make
 // it easy to place text
 uint8_t lcdTextY(uint8_t y) {
-	return y * 8;
+	return y * 8+1;
 }
 
 // Plot a string of characters to the LCD

@@ -3,18 +3,20 @@
 
 #include "stm32l1xx.h"
 
-#define REGULATOR_HYSTERESIS 			  4
-#define REGULATOR_INVERSE				  0
+#define REGULATOR_HYSTERESIS 			  5
+#define REGULATOR_INVERSE				  1
 
-#define REGULATOR_PIN_NUM                 1
-#define REGULATOR_PIN_MASK                (1<<REGULATOR_PIN_NUM)
-#define REGULATOR_PORT                    GPIOA
-#define REGULATOR_CLK                     RCC_AHBPeriph_GPIOA
-#define REGULATOR_OUTPUT_HIGH            REGULATOR_PORT->BSRRL=REGULATOR_PIN_MASK
-#define REGULATOR_OUTPUT_LOW             REGULATOR_PORT->BSRRH=REGULATOR_PIN_MASK
+#define REGULATOR_PIN_NUM                 GPIO_Pin_1
+#define REGULATOR_PORT                    GPIOC
+#define REGULATOR_CLK                     RCC_AHBPeriph_GPIOC
+#define REGULATOR_OUTPUT_HIGH            REGULATOR_PORT->BSRRL=REGULATOR_PIN_NUM
+#define REGULATOR_OUTPUT_LOW             REGULATOR_PORT->BSRRH=REGULATOR_PIN_NUM
 
-void regulatorInit();
-void setPozadovanaHodnota(float value);
-int setAktualnaHodnota(float value);
+void regulatorInit(void);
+
+void vygenerujAkcnyZasah(float pozadovana,float aktualna);
+
+char getAkcnyZasah();
+
 
 #endif /* REGULATOR_H_ */
