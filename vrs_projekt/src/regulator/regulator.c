@@ -34,22 +34,10 @@ void setAkcnyZasah(char status){
 }
 
 void vygenerujAkcnyZasah(float pozadovana,float aktualna){
-	float pomocna = (pozadovana-aktualna)/10;
-	if(pomocna > dynamicHysterese){
-		if(pomocna > REGULATOR_HYSTERESIS_DOWN)
-			dynamicHysterese = -REGULATOR_HYSTERESIS_DOWN;
-		else if(pomocna < 0)
-			dynamicHysterese = 0;
-		else
-			dynamicHysterese = -pomocna;
-	}
-
-	if(aktualna >= (pozadovana+REGULATOR_HYSTERESIS_UP+dynamicHysterese)){
-		dynamicHysterese = 0;
+	if(aktualna >= (pozadovana+REGULATOR_HYSTERESIS_UP)){
 		setAkcnyZasah(0);
 	}
 	else if(aktualna <= (pozadovana-REGULATOR_HYSTERESIS_DOWN)){
-		dynamicHysterese = (pozadovana-aktualna)/10;
 		setAkcnyZasah(1);
 	}
 }
