@@ -10,6 +10,8 @@
 #define OW_ERROR		2
 #define OW_NO_DEVICE	3
 
+#define TIMEOUT 10000
+
 #define OW_NO_READ		0xff
 
 #define OW_READ_SLOT	0xff

@@ -15,11 +15,15 @@ volatile float lastShowedValueAktualna = -100;
 volatile float lastShowedValueZasah = -100;
 
 void showPozadovanaHodnota(float temp) {
-	if (temp != lastShowedValuePozadovana) {
+	const int riadok = 0;
+	if(temp<-20 || temp > 100){
+		lcdPutS("--.--", lcdTextX(14), lcdTextY(riadok),
+						decodeRgbValue(31, 31, 31), decodeRgbValue(0, 0, 0));
+	}
+	else if (temp != lastShowedValuePozadovana) {
 		char buffer[20];
 		const int decimalTemp = (int) temp;
 		const int fragmetTemp = round((temp - decimalTemp) * 10);
-		const int riadok = 0;
 		sprintf(buffer, "%d.%d", decimalTemp, fragmetTemp);
 
 		if (!isShowtextPozadovana) {
@@ -36,11 +40,16 @@ void showPozadovanaHodnota(float temp) {
 }
 
 void showAktualnaHodnota(float temp) {
-	if (temp != lastShowedValueAktualna) {
+	const int riadok = 1;
+	if(temp<-20 || temp > 100){
+		lcdPutS("--.--", lcdTextX(14), lcdTextY(riadok),
+				decodeRgbValue(31, 31, 31), decodeRgbValue(0, 0, 0));
+	}
+	else if (temp != lastShowedValueAktualna) {
 		char buffer[20];
 		const int decimalTemp = (int) temp;
 		const int fragmetTemp = round((temp - decimalTemp) * 10);
-		const int riadok = 1;
+
 		sprintf(buffer, "%d.%d", decimalTemp, fragmetTemp);
 
 		if (!isShowtextPozadovana) {

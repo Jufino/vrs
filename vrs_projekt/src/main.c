@@ -78,18 +78,30 @@ int main(void) {
 	vykresliOsiGrafu();
 	while (1) {
 		ADC_SoftwareStartConv(ADC1);
-		OW_Send(OW_SEND_RESET, "\xcc\x44", 2, NULL, NULL, OW_NO_READ);
-		for (long i = 0; i < 10000; i++)
-			;
-		uint8_t buf[2];
-		OW_Send(OW_SEND_RESET, "\xcc\xbe\xff\xff", 4, buf, 2, 2);
-		//-----------------
-		float teplota = (float) ((buf[1] << 8) | buf[0]) / 16.0;
-		valueAktualna = teplota;
-		pridajAktualnuHodnotuDoGrafu(teplota);
-		showAktualnaHodnota(teplota);
-		vygenerujAkcnyZasah(valuePozadovana, teplota);
-		showAkcnyZasah(getAkcnyZasah());
+		if (OW_Send(OW_SEND_RESET, "\xcc\x44", 2, NULL, NULL,
+		OW_NO_READ) == OW_OK) {
+			for (long i = 0; i < 10000; i++)
+				;
+			uint8_t buf[2];
+			if (OW_Send(OW_SEND_RESET, "\xcc\xbe\xff\xff", 4, buf, 2,
+					2) == OW_OK) {
+				//-----------------
+				float teplota = (float) ((buf[1] << 8) | buf[0]) / 16.0;
+				valueAktualna = teplota;
+				pridajAktualnuHodnotuDoGrafu(teplota);
+				showAktualnaHodnota(teplota);
+				vygenerujAkcnyZasah(valuePozadovana, teplota);
+				showAkcnyZasah(getAkcnyZasah());
+			} else {
+				setAkcnyZasah(0);
+				showAktualnaHodnota(-1000);
+				showAkcnyZasah(getAkcnyZasah());
+			}
+		} else {
+			setAkcnyZasah(0);
+			showAktualnaHodnota(-1000);
+			showAkcnyZasah(getAkcnyZasah());
+		}
 	}
 	return 0;
 }

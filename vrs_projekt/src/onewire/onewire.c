@@ -162,12 +162,18 @@ uint8_t OW_Send(uint8_t sendReset, uint8_t *command, uint8_t cLen,
 		USART_DMACmd(OW_USART, USART_DMAReq_Tx | USART_DMAReq_Rx, ENABLE);
 		DMA_Cmd(OW_DMA_CH_RX, ENABLE);
 		DMA_Cmd(OW_DMA_CH_TX, ENABLE);
-
-		while (DMA_GetFlagStatus(OW_DMA_FLAG) == RESET);
+		uint16_t timeout = 0;
+		FlagStatus flagStatus = DMA_GetFlagStatus(OW_DMA_FLAG);
+		while (timeout < TIMEOUT && flagStatus == RESET){
+			timeout++;
+			flagStatus = DMA_GetFlagStatus(OW_DMA_FLAG);
+		}
 
 		DMA_Cmd(OW_DMA_CH_TX, DISABLE);
 		DMA_Cmd(OW_DMA_CH_RX, DISABLE);
 		USART_DMACmd(OW_USART, USART_DMAReq_Tx | USART_DMAReq_Rx, DISABLE);
+
+		if(timeout >= TIMEOUT) return OW_ERROR;
 
 		if (readStart == 0 && dLen > 0) {
 			*data = OW_toByte(ow_buf);
